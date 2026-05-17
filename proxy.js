@@ -7,11 +7,27 @@ const stations = {
 };
 
 http.createServer((req, res) => {
+
+  // Health check route
+  if (req.url === '/' || req.url === '') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('ESP32 Radio Proxy is running!');
+    return;
+  }
+
   const target = stations[req.url];
-  if (!target) { res.writeHead(404); res.end(); return; }
+
+  if (!target) {
+    res.writeHead(404);
+    res.end();
+    return;
+  }
 
   console.log(`Streaming: ${req.url}`);
-  res.writeHead(200, { 'Content-Type': 'audio/mpeg' });
+
+  res.writeHead(200, {
+    'Content-Type': 'audio/mpeg'
+  });
 
   const fetchStream = (url, redirects = 5) => {
     https.get(url, {
@@ -20,16 +36,30 @@ http.createServer((req, res) => {
         'Icy-MetaData': '0'
       }
     }, (upstream) => {
-      if ([301,302,303,307,308].includes(upstream.statusCode)) {
-        if (redirects > 0) fetchStream(upstream.headers.location, redirects - 1);
+
+      // Handle redirects
+      if ([301, 302, 303, 307, 308].includes(upstream.statusCode)) {
+        if (redirects > 0 && upstream.headers.location) {
+          fetchStream(upstream.headers.location, redirects - 1);
+        } else {
+          res.end();
+        }
         return;
       }
+
       upstream.pipe(res);
-      upstream.on('error', () => res.end());
-    }).on('error', () => res.end());
+
+      upstream.on('error', () => {
+        res.end();
+      });
+
+    }).on('error', () => {
+      res.end();
+    });
   };
 
   fetchStream(target);
+
 }).listen(process.env.PORT || 8888, () => {
   console.log('Proxy live!');
 });
