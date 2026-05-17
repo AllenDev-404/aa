@@ -1,0 +1,8 @@
+{
+  "name": "esp32-radio-proxy",
+  "version": "1.0.0",
+  "main": "proxy.js",
+  "scripts": {
+    "start": "node proxy.js"
+  }
+}
